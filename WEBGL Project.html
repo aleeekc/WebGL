@@ -1,0 +1,96 @@
+<html>
+  <head>
+    <title>Computer Graphics - Project</title>
+    <meta content="">
+    <style>
+		* { margin: 0; padding: 0;}
+
+		body, html { height:100%;background:url(background.jpg); }
+    </style>
+
+	<script type="text/javascript" src="Common/gl-matrix.js"></script>
+	<script type="text/javascript" src="Common/webgl-utils.js"></script>
+	
+	<script id="shader-fs" type="x-shader/x-fragment">
+		precision mediump float;
+
+		varying vec4 vColor;
+
+		void main(void) {
+			gl_FragColor = vColor;
+		}
+	</script>
+	
+	<script id="shader-fs-light" type="x-shader/x-fragment">
+		precision mediump float;
+
+		varying vec3 vLightWeighting;
+		
+		varying vec4 vColor;
+
+		void main(void) {
+			gl_FragColor = vec4(vColor.rgb * vLightWeighting, vColor.a);
+		}
+	</script>	
+
+	<script id="shader-vs" type="x-shader/x-vertex">
+		attribute vec3 aVertexPosition;
+		attribute vec4 aVertexColor;
+
+		uniform mat4 uMVMatrix;
+		uniform mat4 uPMatrix;
+
+		varying vec4 vColor;
+
+		void main(void) {
+			gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+			vColor = aVertexColor;
+		}
+	</script>  
+
+	<script id="shader-vs-light" type="x-shader/x-vertex">
+		attribute vec3 aVertexPosition;
+		attribute vec3 aVertexNormal;
+		attribute vec4 aVertexColor;
+
+		uniform mat4 uMVMatrix;
+		uniform mat4 uPMatrix;
+		uniform mat3 uNMatrix;
+		
+		uniform vec3 uAmbientColor;
+
+		uniform vec3 uLightingDirection;
+		uniform vec3 uDirectionalColor;
+
+		uniform bool uUseLighting;
+
+		varying vec4 vColor;
+		varying vec3 vLightWeighting;
+
+		void main(void) {
+			gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+			vColor = aVertexColor;
+			
+			if (!uUseLighting) {
+				vLightWeighting = vec3(1.0, 1.0, 1.0);
+			} 
+			else {
+				vec3 transformedNormal = uNMatrix * aVertexNormal;
+				float directionalLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);
+				vLightWeighting = uAmbientColor + uDirectionalColor * directionalLightWeighting;
+			}
+		}
+	</script>  
+	<script type="text/javascript" src="WEBGL Project.js"></script>
+</head>
+
+  
+  
+<body onload="start();" >
+	
+	<canvas id="canvas" width=640 height=480 onmousedown="handleMouseDown(event)" onmouseup="handleMouseUp(event)" onmousemove="handleMouseMove(event)"></canvas>
+
+	<br/>
+</body>
+
+</html>

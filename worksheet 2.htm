@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>Worksheet 2</title>
+    <script src="Common/webgl-utils.js" charset="utf-8"></script><style></style>
+    <script src="Common/initShaders.js" charset="utf-8"></script>
+    <script src="Common/MV.js" charset="utf-8"></script>
+  </head>
+  <body style="background: #f1f1f1; margin: 0; padding: 0">
+    <script id="vertex-shader" type="x-shader/x-vertex">
+      attribute vec2 vPosition;
+      attribute vec4 vColor;
+
+      varying vec4 fColor;
+
+      void main() {
+        //gl_Position = vPosition;
+
+        gl_Position.x = vPosition.x;
+        gl_Position.y = vPosition.y;
+        gl_Position.z = 0.0;
+        gl_Position.w = 1.0;
+
+        fColor = vec4(vColor[0], vColor[1], vColor[2], 1);
+        gl_PointSize = 10.0;
+      }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+      precision mediump float;
+      varying vec4 fColor;
+
+      void main() {
+        gl_FragColor = fColor;
+      }
+    </script>
+
+    <script type="text/javascript">
+      var points = [];
+      var triangles = [];
+      var circles = [];
+
+      var max_verices = 1024;
+      var circle_vertices = 32;
+      var bufferId = null;
+
+      var selector = null;
+      var color_selector = null;
+
+      var generate_circle = function(x, y, radius, color1, color2){
+        var _return = [
+          x, y, color1[0], color1[1], color1[2]
+        ];
+
+        var step = 2*Math.PI / (circle_vertices - 2);
+
+        for (var i = 0; i < circle_vertices - 1; i++) {
+          var params = [
+            x + Math.cos(i*step)*radius,
+            y + Math.sin(i*step)*radius,
+            color2[0],
+            color2[1],
+            color2[2]
+          ]
+
+          _return = _return.concat(params)
+        }
+
+        return _return;
+      };
+
+      window.onload = function init() {
+        canvas = document.getElementById("gl-canvas");
+        gl = WebGLUtils.setupWebGL(canvas);
+
+        if (!gl) alert("WebGL isn’t available")
+        document.getElementById("gl-canvas").addEventListener('click', handle);
+
+        selector = document.getElementById("js-tool-selector");
+        color_selector = document.getElementById("js-color-selector");
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.3921, 0.5843, 0.9294, 1.0);
+
+        var program = initShaders( gl, "vertex-shader", "fragment-shader" );
+        gl.useProgram( program );
+
+        // Load the data into the GPU
+        bufferId = gl.createBuffer();
+        var buf_size = 8*4*max_verices;
+
+        gl.bindBuffer( gl.ARRAY_BUFFER, bufferId );
+        gl.bufferData( gl.ARRAY_BUFFER, buf_size, gl.STATIC_DRAW );
+
+        // Associate out shader variables with our data buffer
+        var vPosition = gl.getAttribLocation( program, "vPosition" );
+        gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 5*4 , 0 );
+        gl.enableVertexAttribArray( vPosition );
+
+        var vColor = gl.getAttribLocation( program, "vColor" );
+        gl.vertexAttribPointer( vColor, 3, gl.FLOAT, false, 5*4, 4*2);
+        gl.enableVertexAttribArray( vColor );
+
+        prepare_scene();
+        render();
+      }
+
+      function prepare_scene(){
+        gl.bindBuffer( gl.ARRAY_BUFFER, bufferId );
+
+        var offset = 0;
+        gl.bufferSubData( gl.ARRAY_BUFFER, offset, new Float32Array(points), gl.STATIC_DRAW );
+
+        offset += points.length*4;
+        gl.bufferSubData( gl.ARRAY_BUFFER, offset, new Float32Array(triangles), gl.STATIC_DRAW );
+
+        offset += triangles.length*4;
+        gl.bufferSubData( gl.ARRAY_BUFFER, offset, new Float32Array(circles), gl.STATIC_DRAW );
+      }
+
+      function render(){
+        gl.clear( gl.COLOR_BUFFER_BIT );
+
+        // first lets draw points
+        var offset = 0
+        gl.drawArrays( gl.POINTS, offset, points.length / 5)
+
+        // then we draw triangles
+        offset += points.length / 5
+
+        var triangle_vertices = triangles.length / 5
+        gl.drawArrays( gl.TRIANGLES, offset, triangle_vertices);
+
+        // and finally we draw circles
+        offset += triangle_vertices
+        var circles_count = circles.length / 5 / circle_vertices;
+        // console.log(circles_count);
+        for (var i = 0; i < circles_count; i++) {
+          gl.drawArrays( gl.TRIANGLE_FAN, offset, circle_vertices)
+          offset+=(circle_vertices)
+        }
+
+        window.requestAnimFrame(render);
+      }
+
+      var old_tool = null;
+      var clicks = []
+      var handlers = {
+        dot: function(){
+          points.push(this.x, this.y, this.r, this.g, this.b);
+        },
+        triangle: function(){
+          clicks.push([this.x, this.y, this.r, this.g, this.b])
+
+          if(clicks.length >= 3){
+            for (click of clicks){
+              triangles.push(click[0], click[1], click[2], click[3], click[4]);
+            }
+            points.splice(-10)
+
+            clicks = []
+          } else {
+            points.push(this.x, this.y, this.r, this.g, this.b);
+          }
+        },
+        circle: function(){
+          clicks.push([this.x, this.y, this.r, this.g, this.b])
+
+          if(clicks.length >= 2){
+            var radius = Math.sqrt(Math.pow(clicks[1][0] - clicks[0][0], 2) + Math.pow(clicks[1][1] - clicks[0][1], 2))
+
+            circle = generate_circle(
+              clicks[0][0],
+              clicks[0][1],
+              radius,
+              [clicks[0][2],clicks[0][3],clicks[0][4]],
+              [clicks[1][2],clicks[1][3],clicks[1][4]]
+            )
+            circles.push.apply(circles, circle)
+            points.splice(-5)
+            clicks = []
+          } else {
+            points.push(this.x, this.y, this.r, this.g, this.b);
+          }
+        }
+      }
+
+      function handle(event){
+        var clipx = (event.clientX / canvas.width*2) - 1
+        var clipy = (event.clientY / canvas.height*-2) + 1
+
+        if(selector.selectedIndex < 0)
+          return alert('please select a tool');
+
+        if(color_selector.selectedIndex < 0)
+          return alert('please select a color');
+
+        selected = selector.options[selector.selectedIndex].value;
+        color = color_selector.options[color_selector.selectedIndex].value;
+        color_o = JSON.parse(color);
+
+        // clean up in case tool was switched
+        if(old_tool && selected != old_tool && clicks.length){
+          points.splice(-1*clicks.length*5);
+          clicks = [];
+        }
+
+        handlers[selected].apply(
+          { x: clipx,
+            y: clipy,
+            r: color_o.r,
+            g: color_o.g,
+            b: color_o.b
+          }
+        )
+        old_tool = selected;
+        prepare_scene();
+      }
+
+      function reset(){
+        if(color_selector.selectedIndex < 0)
+          return alert('please select a color');
+
+        color = color_selector.options[color_selector.selectedIndex].value;
+        color_o = JSON.parse(color);
+        clicks = []
+        points = []
+        triangles = []
+        circles = []
+        prepare_scene();
+        gl.clearColor(color_o.r, color_o.g, color_o.b, 1.0);
+      }
+    </script>
+
+    <canvas id="gl-canvas" width="500" height="500">
+      Missing canvas support
+    </canvas>
+    <div>
+      <div style="padding: 20px; float: left;">
+        <div>
+          Choose tool
+        </div>
+
+        <select id="js-tool-selector" multiple="true">
+          <option value="dot" selected="selected">DOTS</option>
+          <option value="triangle">TRIANGLES</option>
+          <option value="circle">CIRCLES</option>
+        </select>
+      </div>
+
+      <div style="padding: 20px; float: left;">
+        <div>
+          Choose COLOR
+        </div>
+
+        <select id="js-color-selector" multiple="true">
+          <option value="{&quot;r&quot;: 1, &quot;g&quot;: 0, &quot;b&quot;: 0}" selected="selected">RED</option>
+          <option value="{&quot;r&quot;: 0, &quot;g&quot;: 1, &quot;b&quot;: 0}">GREEN</option>
+          <option value="{&quot;r&quot;: 0, &quot;g&quot;: 0, &quot;b&quot;: 1}">BLUE</option>
+          <option value="{&quot;r&quot;: 1, &quot;g&quot;: 1, &quot;b&quot;: 1}">WHITE</option>
+          <option value="{&quot;r&quot;: 0, &quot;g&quot;: 0, &quot;b&quot;: 0}">BLACK</option>
+        </select>
+      </div>
+      <div style="padding: 20px; float: left;">
+        <button type="button" name="button" onclick="reset()">Clear canvas</button>
+      </div>
+    </div>
+  
+
+<div class="pcl_tooltip_box" style="display: none;">
+  Image already added
+  <div class="arrow border">
+    
+  </div>
+  <div class="arrow">
+    
+  </div>
+</div>
+<div class="pcl_global_mask" style="display: none;">
+  
+</div>
+</body>
+<div id="scroll_div" style="width: 100px; height: 100px; overflow: scroll; position: absolute; top: -9999px;">
+  
+</div>
+</html>

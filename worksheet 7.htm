@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>worksheet 7</title>
+    <script src="Common/webgl-utils.js" charset="utf-8"></script><style></style>
+    <script src="Common/initShaders.js" charset="utf-8"></script>
+    <script src="Common/MV.js" charset="utf-8"></script>
+    <style>
+.slider {
+    -webkit-appearance: none;
+    width: 500px;
+    height: 15px;
+    border-radius: 5px;  
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%; 
+    background: #0ebeff;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #0ebeff;
+    cursor: pointer;
+}
+</style>
+  </head>
+  <body style="background: #333; margin: 0; padding: 5px; color: #fff;font-family: 'Helvetica Neue'; font-size: 10pt;">
+    <script id="vertex-shader" type="x-shader/x-vertex">
+      precision mediump float;
+      precision highp int;
+
+      attribute vec4 vPosition;
+      attribute vec4 vColor; // Used to color non shaded elements
+      attribute vec4 vNormal;
+
+      // texture data
+      attribute vec2 vTexCoord;
+      varying vec2 fTexCoord;
+
+      varying vec4 fColor;
+      varying vec3 L, N, E;
+      varying vec3 pos;
+      varying vec4 vPos;
+
+      // Some of the elements
+      // like lines, vertexes and normal points do not
+      // use the advanced shading. this variable
+      // toggles the behaviour.
+      uniform bool do_shading;
+      uniform bool is_shadow;
+
+      // 1 - Gouraud  (part 3+4)
+      // 2 - Phong   (part 5)
+      // 3 - rainbox (part 1)
+      uniform int shading_type;
+
+      // Transform matrices
+      uniform mat4 transformMatrix;
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+      uniform mat3 normalMatrix;
+
+      // Lighting
+      uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+      uniform vec4 lightPosition;
+      uniform float shininess;
+
+      void main(void){
+        // texture business
+        fTexCoord = vTexCoord;
+
+        vPos = vPosition * transformMatrix;
+        pos = (modelViewMatrix * vPos).xyz;
+        vec3 light = lightPosition.xyz;
+
+        // check for directional light
+        if(lightPosition.w == 0.0)
+          L = normalize(lightPosition.xyz); // directional light (sun)
+        else
+          L = normalize(lightPosition.xyz - pos); // positional light (spot)
+
+        // Transform vertex normal into eye coordinates
+        N = normalize( normalMatrix * vNormal.xyz);
+        E = -normalize( pos );
+
+        gl_Position = projectionMatrix * modelViewMatrix * vPos;
+
+        // check if we are doing phong, and in that case we return
+        // from here and take over in fragment shader
+        if(shading_type == 2){
+          fColor = vColor;
+          if(do_shading) gl_PointSize = 0.0;
+          else gl_PointSize = 3.0;
+          return;
+        }
+
+        vec3 H = normalize( L + E );
+
+        // Compute terms in the illumination equation
+        vec4 ambient = ambientProduct;
+
+        float Kd = max( dot(L, N), 0.0 );
+        vec4 diffuse = Kd*diffuseProduct;
+
+        float Ks = pow( max(dot(N, H), 0.0), shininess );
+        vec4 specular = Ks * specularProduct;
+
+        if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+
+        if(shading_type == 1) {
+          if(is_shadow)
+            fColor = vec4(0.0, 0.0, 0.0, 1.0);
+          else if(do_shading)
+            fColor = ambient + diffuse + specular;
+          else
+            fColor = vColor;
+        } else {
+          fColor = vec4(0.5*vPosition.x+0.5, 0.5*vPosition.y+0.5, 0.5*vPosition.z+0.5, 1.0);
+        }
+        gl_PointSize = 3.0;
+      }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+      precision mediump float;
+      precision highp int;
+
+      varying vec2 fTexCoord;
+
+      uniform sampler2D uSampler;
+
+      // 1 - Gouraud  (part 3+4)
+      // 2 - Phong   (part 5)
+      // 3 - rainbox (part 1)
+      uniform int shading_type;
+      uniform bool do_shading;
+      uniform bool is_shadow;
+
+      varying vec4 fColor;
+      varying vec3 L, N, E;
+      varying vec3 pos;
+      varying vec4 vPos;
+
+      // Lighting
+      uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+      uniform vec4 lightPosition;
+      uniform float shininess;
+
+      void main(void) {
+        vec4 color;
+
+        if(is_shadow){
+          gl_FragColor = vec4(0., 0., 0., 1.);
+          return;
+        } else if(do_shading){
+          color = texture2D( uSampler, fTexCoord );
+        } else {
+          color = vec4(0.0, 0.0, 0.0, 0.0);
+        }
+
+        if(shading_type == 2){
+          vec3 H = normalize( L + E );
+          vec4 ambient = ambientProduct;
+
+          float Kd = max( dot(L, N), 0.0 );
+          vec4 diffuse = Kd*diffuseProduct;
+
+          float Ks = pow( max(dot(N, H), 0.0), shininess );
+          vec4 specular = Ks * specularProduct;
+
+          if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+          vec4 computed = ambient + diffuse + specular;
+          computed.a = 1.0;
+
+          gl_FragColor = computed*color;
+        } else {
+          gl_FragColor = fColor*color;
+        }
+      }
+    </script>
+
+    <canvas id="gl-canvas" width="512" height="512">
+      Missing canvas support.
+    </canvas>
+    <br>
+    <br>
+    Zoom:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="10" value="0.8" step="0.1" class="slider" id="myRangeZoom">
+    </div>
+    <br>
+    <br>
+    Change camera.x possion:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="10" value="0.2" step="0.1" class="slider" id="myRangeX">
+    </div>
+    <br>
+    <br>
+    Change camera.y possion:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="10" value="10" step="0.1" class="slider" id="myRangeY">
+    </div>
+    <br>
+    <br>
+    Change camera.z possion:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="10" value="2" step="0.1" class="slider" id="myRangeZ">
+    </div>
+        <script src="worksheet 7.js" charset="utf-8"></script>
+</body>
+</html>

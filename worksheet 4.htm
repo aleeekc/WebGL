@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>worksheet 4 </title>
+    <script src="Common/webgl-utils.js" charset="utf-8"></script><style></style>
+    <script src="Common/initShaders.js" charset="utf-8"></script>
+    <script src="Common/MV.js" charset="utf-8"></script>
+    <style>
+.slider {
+    -webkit-appearance: none;
+    width: 500px;
+    height: 15px;
+    border-radius: 5px;  
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%; 
+    background: #0ebeff;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #0ebeff;
+    cursor: pointer;
+}
+
+input[type="checkbox"].switch_1{
+  font-size: 30px;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  width: 2.5em;
+  height: 0.75em;
+  background: #ddd;
+  border-radius: 3em;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked{
+  background: #0ebeff;
+  }
+  
+  input[type="checkbox"].switch_1:after{
+  position: absolute;
+  content: "";
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  background: #fff;
+  -webkit-box-shadow: 0 0 .25em rgba(0,0,0,.3);
+          box-shadow: 0 0 .25em rgba(0,0,0,.3);
+  -webkit-transform: scale(.7);
+          transform: scale(.7);
+  left: 0;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked:after{
+  left: calc(100% - 1.5em);
+  }
+
+</style>
+  </head>
+  <body style="background: #333; margin: 0; padding: 5px; color: #fff;font-family: 'Helvetica Neue'; font-size: 10pt;">
+
+    <canvas id="gl-canvas" width="500" height="500">
+      Missing canvas support.
+    </canvas>
+
+    <div>
+    <br>
+    Division:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="8" value="3" step="1" class="slider" id="division" onchange="selectChange()">
+    </div>
+    <br>
+    <br>
+    <br>
+    Change radius:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="20" value="10" step="0.1" class="slider" id="myRangeRaduis">
+    </div>
+    <br>
+    <br>
+    Animate:
+    <br>
+    <input class="switch_1" type="checkbox" id="animate" checked>
+    <br>
+    <br>
+    Change camera.x:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="-1.6" max="1.6" value="0" step="0.1" class="slider" id="myRangeX">
+    </div>
+        <br>
+    <br>
+    Change camera.y:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="-1.6" max="1.6" value="0" step="0.1" class="slider" id="myRangeY">
+    </div>        <br>
+    <br>
+    Change camera.z:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="-1.6" max="1.6" value="1.6" step="0.1" class="slider" id="myRangeZ">
+    </div>
+    <br>
+    <br>
+    Material Shinines:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="200" value="20" step="1" class="slider" id="myRangeShinines" onchange="selectChange()">
+    </div>
+    <br>
+    shading_type
+    <br>
+    <select id="shading_type" onchange="selectChange()">
+      <option value="1">gourad</option>
+      <option value="2" selected>phong</option>
+      <option value="3">rainbow</option>
+    </select>
+    <br>
+    <br>
+    light_type
+    <br>
+    <select id="light_type" onchange="selectChange()">
+      <option value="directional">directional</option>
+      <option value="positional" selected>positional</option>
+    </select>
+    <br>
+    <br>
+    lightAmbient
+    <br>
+    <input type="color" id="lightAmbient" value="#191919" onchange="selectChange()">
+    <br>
+    <br>
+    lightDiffuse
+    <br>
+    <input type="color" id="lightDiffuse" value="#ffffff" onchange="selectChange()">
+    <br>
+    <br>
+    lightSpecular
+    <br>
+    <input type="color" id="lightSpecular" value="#ffffff" onchange="selectChange()">
+    <br>
+    <br>
+    materialAmbient
+    <br>
+    <input type="color" id="materialAmbient" value="#000000" onchange="selectChange()">
+    <br>
+    <br>
+    materialDiffuse
+    <br>
+    <input type="color" id="materialDiffuse" value="#006630" onchange="selectChange()">
+    <br>
+    <br>
+    materialSpecular
+    <br>
+    <input type="color" id="materialSpecular" value="#ffffff" onchange="selectChange()">
+    <br>
+    <br>
+    Vertices
+    <br>
+    <input class="switch_1" type="checkbox" id="vertices" onchange="selectChange()">
+    <br>
+    Normals
+    <br>
+    <input class="switch_1" type="checkbox" id="normals" onchange="selectChange()">
+    <br>
+    <br>
+    Edges
+    <br>
+    <input class="switch_1" type="checkbox" id="edges" onchange="selectChange()">
+    <br>
+    <br>
+    Triangles
+    <br>
+    <input class="switch_1" type="checkbox" id="triangles" onchange="selectChange()" checked>
+    <br>
+  </div>
+
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+      precision mediump float;
+      precision highp int;
+
+      attribute vec4 vPosition;
+      attribute vec4 vColor; // Used to color non shaded elements
+      attribute vec4 vNormal;
+
+      varying vec4 fColor;
+      varying vec3 L, N, E;
+
+      // Some of the elements
+      // like lines, vertexes and normal points do not
+      // use the advanced shading. this variable
+      // toggles the behaviour.
+      uniform bool do_shading;
+
+      // 1 - Gouraud  (part 3+4)
+      // 2 - Phong   (part 5)
+      // 3 - rainbox (part 1)
+      uniform int shading_type;
+
+      // Transform matrices
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+      uniform mat3 normalMatrix;
+
+      // Lighting
+      uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+      uniform vec4 lightPosition;
+      uniform float shininess;
+
+      void main(void){
+        vec3 pos = (modelViewMatrix * vPosition).xyz;
+        vec3 light = lightPosition.xyz;
+
+        // check for directional light
+        if(lightPosition.w == 0.0)
+          L = normalize(lightPosition.xyz); // directional light (sun)
+        else
+          L = normalize(lightPosition.xyz - pos); // positional light (spot)
+
+        // Transform vertex normal into eye coordinates
+        N = normalize( normalMatrix*vNormal.xyz);
+        E = -normalize( pos );
+
+        gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+
+        // check if we are doing phong, and in that case we return
+        // from here and take over in fragment shader
+        if(shading_type == 2){
+          fColor = vColor;
+          if(do_shading) gl_PointSize = 0.0;
+          else gl_PointSize = 3.0;
+          return;
+        }
+
+        vec3 H = normalize( L + E );
+
+        // Compute terms in the illumination equation
+        vec4 ambient = ambientProduct;
+
+        float Kd = max( dot(L, N), 0.0 );
+        vec4 diffuse = Kd*diffuseProduct;
+
+        float Ks = pow( max(dot(N, H), 0.0), shininess );
+        vec4 specular = Ks * specularProduct;
+
+        if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+
+        if(shading_type == 1) {
+          if(do_shading) fColor = ambient + diffuse + specular;
+          else fColor = vColor;
+        } else {
+          fColor = vec4(0.5*vPosition.x+0.5, 0.5*vPosition.y+0.5, 0.5*vPosition.z+0.5, 1.0);
+        }
+        gl_PointSize = 3.0;
+      }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+      precision mediump float;
+      precision highp int;
+
+      // 1 - Gouraud  (part 3+4)
+      // 2 - Phong   (part 5)
+      // 3 - rainbox (part 1)
+      uniform int shading_type;
+
+      varying vec4 fColor;
+      varying vec3 L, N, E;
+
+      // Lighting
+      uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+      uniform vec4 lightPosition;
+      uniform float shininess;
+
+      void main(void) {
+        if(shading_type == 2){
+          vec3 H = normalize( L + E );
+          vec4 ambient = ambientProduct;
+
+          float Kd = max( dot(L, N), 0.0 );
+          vec4 diffuse = Kd*diffuseProduct;
+
+          float Ks = pow( max(dot(N, H), 0.0), shininess );
+          vec4 specular = Ks * specularProduct;
+
+          if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+          vec4 computed = ambient + diffuse + specular;
+          computed.a = 1.0;
+
+          gl_FragColor = computed;
+        } else {
+          gl_FragColor = fColor;
+        }
+      }
+    </script>
+
+    <script type="text/javascript">
+      var Tetrahedron = function(params){
+        this.index     = 0;
+        this.divisions = params && params['divisions'] !== undefined ? params['divisions'] : 3;
+        this.vertices  = [];
+        this.edges     = [];
+        this.triangles = [];
+        this.normals   = [];
+
+        var v = [
+          vec4(0.0, 0.0, -1.0, 1),
+          vec4(0.0, 0.942809, 0.333333, 1),
+          vec4(-0.816497, -0.471405, 0.333333, 1),
+          vec4(0.816497, -0.471405, 0.333333, 1)
+        ];
+
+        this.divide(v[0], v[1], v[2], this.divisions);
+        this.divide(v[3], v[2], v[1], this.divisions);
+        this.divide(v[0], v[3], v[1], this.divisions);
+        this.divide(v[0], v[2], v[3], this.divisions);
+      };
+
+      Tetrahedron.prototype.triangle = function(a, b, c) {
+         var t1 = subtract(b, a);
+         var t2 = subtract(c, a);
+         var normal = normalize(cross(t2, t1));
+         normal = vec4(normal);
+
+         this.normals.push(normal);
+
+         this.vertices.push(a);
+         this.vertices.push(b);
+         this.vertices.push(c);
+
+         this.index += 3;
+
+         this.triangles.push([this.index-1, this.index-2, this.index-3]);
+         this.edges.push([this.index-1, this.index-3]);
+         this.edges.push([this.index-2, this.index-3]);
+      }
+
+      Tetrahedron.prototype.divide = function(a, b, c, count) {
+        if(count <= 0) return this.triangle( a, b, c );
+
+        var ab = mix( a, b, 0.5);
+        var ac = mix( a, c, 0.5);
+        var bc = mix( b, c, 0.5);
+
+        ab = normalize(ab, true);
+        ac = normalize(ac, true);
+        bc = normalize(bc, true);
+
+        this.divide( a, ab, ac,  count - 1 );
+        this.divide( ab, b, bc,  count - 1 );
+        this.divide( bc, c, ac,  count - 1 );
+        this.divide( ab, bc, ac, count - 1 );
+      };
+
+      var mylightAmbient  = [255, 255, 255];
+      var mylightDiffuse  = [255, 255, 255];
+      var mylightSpecular  = [255, 255, 255];
+      var mymaterialAmbient  = [64, 64, 64];
+      var mymaterialDiffuse  = [255, 255, 255];
+      var mymaterialSpecular  = [255, 255, 255];
+      var myshading_type = 2;
+      var mylight_type = "positional";
+      var mydivision = 3;
+
+
+      var sliderRadius = document.getElementById("myRangeRaduis");
+      var sliderCameraX = document.getElementById("myRangeX");
+      var sliderCameraY = document.getElementById("myRangeY");
+      var sliderCameraZ = document.getElementById("myRangeZ");
+      var camera_raduis = 10;
+      var camera_pos_x = 0;
+      var camera_pos_y = 0;
+      var camera_pos_z = 1.6;
+
+      // ===== RENDERER =====
+      var shininess = 20;
+
+      var Obj = function(params){
+        this.program = params['program'];
+        this.gl      = params['gl'];
+        this.model   = params['model'];
+
+        for(var propt in this)
+          if(this[propt] === undefined)
+            throw "Undefined " + propt + " in Obj()!"
+
+        this.buffers = {
+          normals:   {}, // stores normal points for display purposes only
+          vertices:  {}, // vertices
+          edges:     {}, // lines connecting vertices
+          triangles: {}  // triangles
+        };
+
+        this.to_render = {
+          vertices:  false,
+          edges:     false,
+          normals:   false,
+          triangles: true
+        }
+
+        this.shading_type = myshading_type; //2;
+        this.light_type   = mylight_type; //'positional';
+
+        this.lightAmbient  = [25, 25, 25];
+        this.lightDiffuse  = [255, 255, 255];
+        this.lightSpecular = [255, 255, 255];
+
+        this.materialAmbient  = [0, 0, 0];
+        this.materialDiffuse  = [222, 20, 222];
+        this.materialSpecular = [255, 255, 255];
+
+        this.materialShinines = 100.0;
+
+        this.init_geometry();
+        this.init_camera();
+        this.init_lights();
+      }
+
+      Obj.prototype.init_geometry = function(){
+        var _this = this;
+
+        var gl = this.gl;
+        var program = this.program;
+        var buffers = this.buffers;
+        var model = this.model;
+
+        [{
+            'name' : 'normals',
+            'color': [0, 0, 1],
+            'vertices' : function(){
+              return model.normals
+            }
+          },{
+            'name' : 'vertices',
+            'color': [1, 1, 1],
+            'vertices' : function(){
+              return model.vertices
+            }
+          },{
+            'name' : 'edges',
+            'color': [1, 1, 1],
+            'vertices' : function(){
+              var vertices = [];
+
+              model.edges.forEach(function(pair){
+                vertices.push(
+                  model.vertices[pair[0]],
+                  model.vertices[pair[1]]
+                );
+              });
+
+              return vertices;
+            }
+          },{
+            'name': 'triangles',
+            'color': [0.3, 0.3, 0.3],
+            'vertices': function(){
+              var vertices = [];
+
+              model.triangles.forEach(function(triplet){
+                vertices.push(
+                  model.vertices[triplet[0]],
+                  model.vertices[triplet[1]],
+                  model.vertices[triplet[2]]
+                );
+              });
+
+              return vertices;
+            },
+            'normals': function(){
+              var normals = [];
+
+              model.normals.forEach(function(normal){
+                normals.push(normal, normal, normal);
+              });
+
+              return normals;
+            }
+          }
+        ].forEach(function(_init){
+          var buffer_group = buffers[_init['name']];
+          var _vertices    = _init['vertices'].call();
+          var _color       = _init['color'];
+
+          gl.deleteBuffer(buffer_group.vertex_buffer);
+          gl.deleteBuffer(buffer_group.color_buffer);
+          gl.deleteBuffer(buffer_group.normals_buffer);
+
+          // generate vertexes and populate buffer
+          buffer_group.vertex_count = _vertices.length;
+          buffer_group.vertex_buffer = gl.createBuffer();
+          buffer_group.vPosition = gl.getAttribLocation( program, "vPosition" );
+          gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.vertex_buffer );
+          gl.bufferData( gl.ARRAY_BUFFER, flatten(_vertices), gl.STATIC_DRAW);
+
+          // generate colors and populate buffer
+          var colors = [];
+          for (var i = 0; i < _vertices.length; i++)
+            colors.push(vec4(_color[0], _color[1], _color[2], 1))
+
+          buffer_group.color_buffer = gl.createBuffer();
+          buffer_group.vColor       = gl.getAttribLocation( program, "vColor" );
+          gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.color_buffer );
+          gl.bufferData( gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW );
+
+          // normals
+          if(_init['normals']){
+            var normals = _init['normals'].call();
+
+            buffer_group.normals_buffer = gl.createBuffer();
+            buffer_group.vNormal        = gl.getAttribLocation(program, "vNormal");
+
+            gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.normals_buffer);
+            gl.bufferData( gl.ARRAY_BUFFER, flatten(normals), gl.STATIC_DRAW );
+          }
+        });
+      }
+
+      Obj.prototype.init_camera = function(){
+        var program = this.program;
+
+        // Let's set up matrixes.
+        this.radius = 3.0;
+        this.at = vec3(0.0, 0.0, 0.0);
+        this.up = vec3(0.0, 1.0, 0.0);
+
+        // camera angle
+        this.camera_angle_x = 0;
+        this.camera_angle_y = 0;
+        this.camera_angle_z = 0;
+
+        // Projection matrix
+        this.fovy = 45.0;
+        this.aspect = 1;
+        this.near = 0.01;
+        this.far = 100.0;
+
+        // Matrix locations
+        this.modelViewMatrixLoc  = gl.getUniformLocation( program, "modelViewMatrix" );
+        this.projectionMatrixLoc = gl.getUniformLocation( program, "projectionMatrix" );
+        this.normalMatrixLoc     = gl.getUniformLocation( program, "normalMatrix" );
+
+        this.do_shading_loc      = gl.getUniformLocation( program, "do_shading" );
+        this.shading_type_loc    = gl.getUniformLocation( program, "shading_type" );
+
+        // frame counter for animation
+        this.animate = true;
+        this.frame = 0;
+      }
+
+      Obj.prototype.init_lights = function(){
+        var program = this.program;
+
+        var light_types = {
+          directional: 0.0,
+          positional:  1.0,
+        }
+
+        // lighting
+        var lightPosition = vec4(0.0, 0.0, 1.0, light_types[this.light_type] );
+
+        var lightAmbient  = vec4.apply(null, this.lightAmbient.map(function(n){ return 1/255*n }));
+        var lightDiffuse  = vec4.apply(null, this.lightDiffuse.map(function(n){ return 1/255*n }));
+        var lightSpecular = vec4.apply(null, this.lightSpecular.map(function(n){ return 1/255*n }));
+
+        var materialAmbient  = vec4.apply(null, this.materialAmbient.map(function(n){ return 1/255*n }));
+        var materialDiffuse  = vec4.apply(null, this.materialDiffuse.map(function(n){ return 1/255*n }));
+        var materialSpecular = vec4.apply(null, this.materialSpecular.map(function(n){ return 1/255*n }));
+
+        this.lightAmbient = mylightAmbient;
+        this.lightDiffuse = mylightDiffuse;
+        this.lightSpecular = mylightSpecular;
+        this.materialAmbient = mymaterialAmbient;
+        this.materialDiffuse = mymaterialDiffuse;
+        this.materialSpecular = mymaterialSpecular;
+
+        var ambientProduct = mult(lightAmbient, materialAmbient);
+        var diffuseProduct = mult(lightDiffuse, materialDiffuse);
+        var specularProduct = mult(lightSpecular, materialSpecular);
+
+        gl.uniform4fv( gl.getUniformLocation(program, "ambientProduct" ),  flatten(ambientProduct));
+        gl.uniform4fv( gl.getUniformLocation(program, "diffuseProduct" ),  flatten(diffuseProduct));
+        gl.uniform4fv( gl.getUniformLocation(program, "specularProduct"),  flatten(specularProduct));
+        gl.uniform4fv( gl.getUniformLocation(program, "lightPosition"  ),  flatten(lightPosition));
+
+        gl.uniform1f( gl.getUniformLocation(program, "shininess"),  shininess /*this.materialShinines*/);
+      }
+
+      Obj.prototype.render = function(){
+        var buffers     = this.buffers;
+        var gl          = this.gl;
+        var to_render   = this.to_render;
+
+        var _do_shading   = this.do_shading_loc;
+        var _shading_type = this.shading_type_loc;
+
+        if(document.getElementById("animate").checked){ //  this.animate
+          if(this.frame <= 180)
+            this.frame += 1;
+          else
+            this.frame = 2;
+
+          camera_pos_x = Math.sin(1/90*this.frame*Math.PI);
+        }
+
+        // update martices
+        this.camera = vec3(
+          camera_raduis*Math.sin(camera_pos_x),//this.radius*Math.sin(this.camera_angle_x),
+          camera_raduis*Math.sin(camera_pos_y),//this.radius*Math.sin(this.camera_angle_y),
+          camera_raduis*Math.sin(camera_pos_z)//this.radius*Math.cos(this.camera_angle_z)
+        );
+
+        this.modelViewMatrix = lookAt(this.camera, this.at, this.up);
+        this.projectionMatrix = perspective(this.fovy, this.aspect, this.near, this.far);
+
+        this.normalMatrix = [
+            vec3(this.modelViewMatrix[0][0], this.modelViewMatrix[0][1], this.modelViewMatrix[0][2]),
+            vec3(this.modelViewMatrix[1][0], this.modelViewMatrix[1][1], this.modelViewMatrix[1][2]),
+            vec3(this.modelViewMatrix[2][0], this.modelViewMatrix[2][1], this.modelViewMatrix[2][2])
+        ];
+
+        gl.uniformMatrix4fv(this.modelViewMatrixLoc,  false, flatten(this.modelViewMatrix));
+        gl.uniformMatrix4fv(this.projectionMatrixLoc, false, flatten(this.projectionMatrix));
+        gl.uniformMatrix3fv(this.normalMatrixLoc,     false, flatten(this.normalMatrix));
+
+        gl.uniform1i(_shading_type, this.shading_type);
+
+        [{
+          'name':'normals',
+          'mode':'POINTS'
+        },{
+          'name':'vertices',
+          'mode':'POINTS'
+        },{
+          'name':'edges',
+          'mode':'LINES'
+        },{
+          'name':'triangles',
+          'mode':'TRIANGLES'
+        }].forEach(function(_render){
+          var buffer_group = buffers[_render['name']];
+
+          if(buffer_group.vertex_count && to_render[_render['name']]){
+            gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.vertex_buffer );
+            gl.vertexAttribPointer( buffer_group.vPosition, 4, gl.FLOAT, false, 0, 0 );
+            gl.enableVertexAttribArray( buffer_group.vPosition );
+
+            gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.color_buffer );
+            gl.vertexAttribPointer( buffer_group.vColor, 4, gl.FLOAT, false, 0, 0 );
+            gl.enableVertexAttribArray( buffer_group.vColor );
+
+            if(buffer_group.vNormal){
+              gl.uniform1i(_do_shading, true);
+              gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.normals_buffer );
+              gl.vertexAttribPointer(buffer_group.vNormal, 4, gl.FLOAT, false, 0, 0 );
+              gl.enableVertexAttribArray(buffer_group.vNormal);
+            } else {
+              gl.uniform1i(_do_shading, false);
+            }
+
+            gl.drawArrays( gl[_render['mode']], 0, buffer_group.vertex_count );
+
+            gl.disableVertexAttribArray(buffer_group.vPosition);
+            gl.disableVertexAttribArray(buffer_group.vColor);
+            gl.disableVertexAttribArray(buffer_group.vNormal);
+          }
+        });
+      }
+
+      // all objects that we are going to draw are stored in this array
+      var objects = [];
+
+      window.onload = function() {
+        try { init(); }
+        catch (e) { console.debug(e) }
+      }
+
+      var init = function(){
+        canvas = document.getElementById("gl-canvas");
+        gl = WebGLUtils.setupWebGL(canvas);
+
+        if (!gl) alert("WebGL isn’t available")
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        // gl.clearColor(0.3, 0.3, 0.3, 1.0);
+
+        gl.clearColor(0, 0, 0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
+
+        var program = initShaders( gl, "vertex-shader", "fragment-shader" );
+        gl.useProgram( program );
+
+        var tetrahedron = new Tetrahedron();
+
+        var obj = new Obj({
+          program: program,
+          gl: gl,
+          model: tetrahedron
+        });
+
+        objects.push(obj);
+
+        obj.init_lights();
+
+        sliderRadius.oninput = function() {
+            camera_raduis = this.value;
+        };
+
+        sliderCameraX.oninput = function() {
+            camera_pos_x = this.value;
+        };
+
+        sliderCameraY.oninput = function() {
+            camera_pos_y = this.value;
+        };
+
+        sliderCameraZ.oninput = function() {
+            camera_pos_z = this.value;
+        };
+
+        var render = function(){
+          gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+          objects.forEach(function(o){ 
+            o['shading_type'] = myshading_type;
+            o.to_render = {
+              vertices:  document.getElementById("vertices").checked,//false,
+              normals:   document.getElementById("normals").checked, // false
+              triangles: document.getElementById("triangles").checked, // true
+              edges: document.getElementById("edges").checked, // false
+            }  
+            //o.model['divisions'] = mydivision;
+            var tetrahedron = new Tetrahedron({
+              divisions: mydivision
+            });
+            o.model = tetrahedron;
+            console.log(o.model['divisions']);
+            o.init_geometry();
+            o.init_lights(); 
+            o.render(); 
+          });
+          window.requestAnimFrame(function(){
+            render()
+          });
+        }
+
+        render();
+      }
+
+
+            function selectChange() {
+        try {   
+
+          var shading_type = document.getElementById("shading_type");
+          var light_type = document.getElementById("light_type");
+          var division = document.getElementById("division");
+
+          shading_type.oninput = function() {
+              myshading_type = this.value;
+              if(myshading_type == 3)
+              {
+                document.getElementById("triangles").checked = false;
+                document.getElementById("edges").checked = true;
+              }else {
+                document.getElementById("triangles").checked = true;
+                document.getElementById("edges").checked = false;
+              }
+          } ; 
+
+          light_type.oninput = function() {
+              mylight_type = this.value;
+          } ; 
+
+          division.oninput = function(){
+            console.log(this.value);
+            mydivision = this.value;
+          }
+
+          var slider = document.getElementById("myRangeShinines");
+          slider.oninput = function() {
+              shininess = this.value;
+          }; 
+
+          var domlightAmbient  = document.getElementById("lightAmbient");
+          var domlightDiffuse  = document.getElementById("lightDiffuse");
+          var domlightSpecular  = document.getElementById("lightSpecular");
+          var dommaterialAmbient  = document.getElementById("materialAmbient");
+          var dommaterialDiffuse  = document.getElementById("materialDiffuse");
+          var dommaterialSpecular  = document.getElementById("materialSpecular");
+
+
+          domlightAmbient.oninput = function() {
+            var rgb = this.value.match(/[A-Za-z0-9]{2}/g).map(function(v) { return parseInt(v, 16) }).join(" ")
+            mylightAmbient = rgb.split(" ");
+
+          } ;
+          domlightDiffuse.oninput = function() {
+            var rgb = this.value.match(/[A-Za-z0-9]{2}/g).map(function(v) { return parseInt(v, 16) }).join(" ")
+            mylightDiffuse = rgb.split(" ");
+
+          } ;
+          domlightSpecular.oninput = function() {
+            var rgb = this.value.match(/[A-Za-z0-9]{2}/g).map(function(v) { return parseInt(v, 16) }).join(" ")
+            mylightSpecular = rgb.split(" ");
+          } ;
+          dommaterialAmbient.oninput = function() {
+            var rgb = this.value.match(/[A-Za-z0-9]{2}/g).map(function(v) { return parseInt(v, 16) }).join(" ")
+            mymaterialAmbient = rgb.split(" ");
+          } ;
+          dommaterialDiffuse.oninput = function() {
+            var rgb = this.value.match(/[A-Za-z0-9]{2}/g).map(function(v) { return parseInt(v, 16) }).join(" ")
+            mymaterialDiffuse = rgb.split(" ");
+          } ;          
+          dommaterialSpecular.oninput = function() {
+            var rgb = this.value.match(/[A-Za-z0-9]{2}/g).map(function(v) { return parseInt(v, 16) }).join(" ")
+            mymaterialSpecular = rgb.split(" ");
+          } ;
+      }
+        catch (e) { console.debug(e) }
+      }
+
+    </script>
+
+    <div style="width: 500px; padding: 10px;">
+      <p>
+        Selector shading_type allows to choose different shading modes
+        (note that <em>rainbox</em> mode is <strong>task2</strong> where
+        vertexes are drawn as colors). Also, one can tweak what parts of the object
+        to draw: Vetices, Edges, Normals or Triangles along with tetrahedron divisions,
+        colors, animation, camera parameters and light modes.
+      </p>
+      <p>
+        As for the replies to the questions:
+      </p>
+      <ul>
+        <li>
+          <p>
+            <strong>Q: Is Gouraud or Phong shading the best method for simulating highlight? Explain.</strong>
+          </p>
+          <p>
+            <strong>A:</strong> It depends what "best" is. With Phong one gets a much more realistic highlight
+            (as we do the calculation for every pixel in the fragment shader), but one
+            could imagine tasks where a more cartoonish or flat result is desired.
+            For that, Gouraud might be a more appropriate choice.
+          </p>
+        </li>
+        <li>
+          <p>
+            <strong>a) What is the difference between Phong shading and Phong
+              lighting (the Phong reflection model)?</strong>
+          </p>
+          <p>
+            <strong>A:</strong> Phong shading is about interpolating normals and
+            computing the final color for the <strong>fragment</strong> while Phong
+            reflection is a model where the reflected color is the result of combining
+            three types of light: ambient, diffuse and specular.
+          </p>
+        </li>
+        <li>
+          <p>
+            <strong>b) What is the difference between flat shading, Gouraud shading, and Phong
+              shading? List pros and cons of each.?</strong>
+          </p>
+          <p>
+            <strong>A:</strong> <strong>Flat shading</strong> is a simple technique where the whole
+            polygon ends up being color with the same color (no interpolation).
+            The result is very flat and not realistic (which is a con) but requires
+            less computational resources (a pro).
+          </p>
+          <p>
+            In <strong>Gouraud shading</strong>, the light calculation is done at every
+            vertex and later interpolated across the fragment in fragment shader. This technique
+            is fast, but does not produce a realistic results on (especially with large polygons).
+          </p>
+          <p>
+            Finally, in <strong>Phong shading</strong> we do calculation at every
+            pixel which gives the most realistic results, but requires the
+            most computations of all three mentioned methods.
+          </p>
+        </li>
+
+        <li>
+          <p><strong>c) What is the difference between a directional light and a point light?</strong></p>
+          <p>
+            <strong>A:</strong> A point light has a position and direction (example: a spot light in the room),
+            while directional light produces parallel light rays and is modeled with a vector that only
+            indicates the direction (example: sun). Toggle the animation and check out the
+            <strong>light_type</strong>
+          </p>
+        </li>
+
+        <li>
+          <p><strong>d) Does the eye position influence the shading of an object in any way?</strong></p>
+          <p>
+            <strong>A:</strong> Yes! When calculating light, the specular reflection
+            calculation takes the position of the eye in to consideration and reaches
+            maximum when reflected light and "eye/camera" vector have same direction.
+          </p>
+        </li>
+
+        <li>
+          <p><strong>e) What is the effect of setting the specular term to (0, 0, 0)?</strong></p>
+          <p>
+            <strong>A:</strong> The highlight is lost.
+          </p>
+        </li>
+
+        <li>
+          <p><strong>f) What is the effect of increasing the shininess exponent (α)?</strong></p>
+          <p>
+            <strong>A:</strong> A more narrow (less spread), focused highlight is achieved.
+          </p>
+        </li>
+
+        <li>
+          <p><strong>g) In what coordinate space did you compute the lighting?</strong></p>
+          <p>
+            <strong>A: Eye coordinates.</strong>
+          </p>
+        </li>
+      </ul>
+    </div>
+  
+
+</body>

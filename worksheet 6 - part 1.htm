@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>Worksheeet 6 - part1</title>
+    <script src="Common/webgl-utils.js" charset="utf-8"></script><style></style>
+    <script src="Common/initShaders.js" charset="utf-8"></script>
+    <script src="Common/MV.js" charset="utf-8"></script>
+  </head>
+  <style>
+.slider {
+    -webkit-appearance: none;
+    width: 500px;
+    height: 15px;
+    border-radius: 5px;  
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%; 
+    background: #0ebeff;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #0ebeff;
+    cursor: pointer;
+}
+
+input[type="checkbox"].switch_1{
+  font-size: 30px;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  width: 2.5em;
+  height: 0.75em;
+  background: #ddd;
+  border-radius: 3em;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked{
+  background: #0ebeff;
+  }
+  
+  input[type="checkbox"].switch_1:after{
+  position: absolute;
+  content: "";
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  background: #fff;
+  -webkit-box-shadow: 0 0 .25em rgba(0,0,0,.3);
+          box-shadow: 0 0 .25em rgba(0,0,0,.3);
+  -webkit-transform: scale(.7);
+          transform: scale(.7);
+  left: 0;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked:after{
+  left: calc(100% - 1.5em);
+  }
+
+</style>
+  <body style="background: #333; margin: 0; padding: 5px; color: #fff;font-family: 'Helvetica Neue'; font-size: 10pt;">
+    
+
+    <canvas id="gl-canvas" width="512" height="512">
+      Missing canvas support.
+    </canvas>
+        <br>
+        Change radius:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="6" value="3.6" step="0.1" class="slider" id="myRangeRaduis">
+    </div>
+    <br>
+    <br>
+    Animate:
+    <br>
+    <input class="switch_1" type="checkbox" id="animate">
+        <br>
+    <br>
+    Change camera.x:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="-1.6" max="1.6" value="0" step="0.1" class="slider" id="myRangeX">
+    </div>
+        <br>
+    <br>
+    Change camera.y:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="-1.6" max="1.6" value="1" step="0.1" class="slider" id="myRangeY">
+    </div>        <br>
+    <br>
+    Change camera.z:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="-1.6" max="1.6" value="0" step="0.1" class="slider" id="myRangeZ">
+    </div>
+    <br>
+    texture_wrap_s
+        <br>
+    <select id="texture_wrap_s" onchange="selectChange()">
+      <option value="repeat">repeat</option>
+      <option value="clamp_to_edge">clamp_to_edge</option>
+      <option value="mirrored_repeat">mirrored_repeat</option>
+    </select>
+    <br>
+        texture_wrap_t
+        <br>
+    <select id="texture_wrap_t" onchange="selectChange()">
+      <option value="repeat">repeat</option>
+      <option value="clamp_to_edge">clamp_to_edge</option>
+      <option value="mirrored_repeat">mirrored_repeat</option>
+    </select>
+    <br>
+    texture_min_filter
+            <br>
+    <select id="texture_min_filter" onchange="selectChange()">
+      <option value="linear">linear</option>
+      <option value="nearest">nearest</option>
+      <option value="nearest_mipmap_nearest">nearest_mipmap_nearest</option>
+      <option value="linear_mipmap_nearest">linear_mipmap_nearest</option>
+      <option value="nearest_mipmap_linear">nearest_mipmap_linear</option>
+      <option value="linear_mipmap_linear">linear_mipmap_linear</option>
+    </select>
+    <br>
+    texture_mag_filter
+                <br>
+    <select id="texture_mag_filter" onchange="selectChange()">
+      <option value="linear">linear</option>
+      <option value="nearest">nearest</option>
+      <option value="mirrored_repeat">mirrored_repeat</option>
+    </select>
+
+    <div style="width: 500px; padding: 10px;">
+      <ul>
+        <li>
+          <p>
+            <strong>Q: Explain the effect of the different filtering modes and
+              their influence on texture magnification and minification issues.</strong>
+          </p>
+          <p>
+            <strong>A:</strong>
+          </p>
+          </li><li>
+            <p>
+              <strong>gl.TEXTURE_MAG_FILTER</strong>: Texture magnification filter.
+            </p>
+            <p>Possible values:</p>
+            <ul>
+              <li>
+                gl.LINEAR (default value):
+                <p>
+                  Linear filtering (also sometimes called Bilinear) where color
+                  is calculated as an average as the average of 4 surrounding texels.
+                </p>
+              </li>
+              <li>
+                gl.NEAREST
+                <p>
+                  Color for the texel nearest to the texture coordinate is used.
+                </p>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <strong>gl.TEXTURE_MIN_FILTER</strong>: Texture minification filter
+            <p>Possible values</p>
+            <!-- gl.NEAREST_MIPMAP_NEAREST, gl.LINEAR_MIPMAP_NEAREST, gl.NEAREST_MIPMAP_LINEAR (default value), gl.LINEAR_MIPMAP_LINEAR. -->
+            <ul>
+              <li>gl.LINEAR (see above)</li>
+              <li>gl.NEAREST (see above)</li>
+              <li>gl.NEAREST_MIPMAP_NEAREST
+                <p>
+                  Nearest neighbour filtering is used on the nearest mipmap level.
+                </p>
+              </li>
+              <li>gl.LINEAR_MIPMAP_NEAREST
+                <p>
+                  Two closest miplevels are sampled and then a linear interpolation
+                  is perfomed to obtain the final result.
+                </p>
+              </li>
+              <li>gl.NEAREST_MIPMAP_LINEAR (default value)
+                <p>
+                  Linear filtering is used on the nearest mipmap level.
+                </p>
+              </li>
+              <li>
+                gl.LINEAR_MIPMAP_LINEAR (also known as trilinear filter)
+                <p>
+                  Linear filtering is used on two of the closest mipmaps.
+                </p>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <p>
+              <strong>gl.TEXTURE_WRAP_S</strong>: Wrapping function for texture coordinate s
+            </p>
+            <p>
+              Possible values:  gl.REPEAT (default value), gl.CLAMP_TO_EDGE, gl.MIRRORED_REPEAT.
+            </p>
+            <ul>
+              <li>
+                gl.REPEAT: The texture is repeated for each integer boundry of
+                the texture coordinate
+              </li>
+              <li>
+                gl.CLAMP_TO_EDGE: All texture coordinate are clamped to the range
+                [0, 1]
+              </li>
+              <li>
+                gl.MIRRORED_REPEAT: Practically the same as gl.REPEAT but with
+                but texture is mirrored when integer portion of the coordinate
+                is even.
+              </li>
+            </ul>
+          </li>
+          <li>
+            <p>
+              <strong>gl.TEXTURE_WRAP_T</strong>: Wrapping function for texture coordinate t
+            </p>
+            <p>Possible values (and default value) mirrors gl.TEXTURE_WRAP_S</p>
+          </li>
+          <p>
+
+          </p>
+    
+      </ul>
+    </div>
+    <br>
+    <br>
+
+  <script id="vertex-shader" type="x-shader/x-vertex">
+      precision mediump float;
+      precision highp int;
+
+      attribute vec4 vPosition;
+      attribute vec4 vColor; // Used to color non shaded elements
+      attribute vec4 vNormal;
+
+      // texture data
+      attribute vec2 vTexCoord;
+      varying vec2 fTexCoord;
+
+      varying vec4 fColor;
+      varying vec3 L, N, E;
+
+      // Some of the elements
+      // like lines, vertexes and normal points do not
+      // use the advanced shading. this variable
+      // toggles the behaviour.
+      uniform bool do_shading;
+
+      // 1 - Gouraud  (part 3+4)
+      // 2 - Phong   (part 5)
+      // 3 - rainbox (part 1)
+      uniform int shading_type;
+
+      // Transform matrices
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+      uniform mat3 normalMatrix;
+
+      // Lighting
+      uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+      uniform vec4 lightPosition;
+      uniform float shininess;
+
+      void main(void){
+        // texture business
+        fTexCoord = vTexCoord;
+
+        vec3 pos = (modelViewMatrix * vPosition).xyz;
+        vec3 light = lightPosition.xyz;
+
+        // check for directional light
+        if(lightPosition.w == 0.0)
+          L = normalize(lightPosition.xyz); // directional light (sun)
+        else
+          L = normalize(lightPosition.xyz - pos); // positional light (spot)
+
+        // Transform vertex normal into eye coordinates
+        N = normalize( normalMatrix*vNormal.xyz);
+        E = -normalize( pos );
+
+        gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+
+        // check if we are doing phong, and in that case we return
+        // from here and take over in fragment shader
+        if(shading_type == 2){
+          fColor = vColor;
+          if(do_shading) gl_PointSize = 0.0;
+          else gl_PointSize = 3.0;
+          return;
+        }
+
+        vec3 H = normalize( L + E );
+
+        // Compute terms in the illumination equation
+        vec4 ambient = ambientProduct;
+
+        float Kd = max( dot(L, N), 0.0 );
+        vec4 diffuse = Kd*diffuseProduct;
+
+        float Ks = pow( max(dot(N, H), 0.0), shininess );
+        vec4 specular = Ks * specularProduct;
+
+        if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+
+        if(shading_type == 1) {
+          if(do_shading) fColor = ambient + diffuse + specular;
+          else fColor = vColor;
+        } else {
+          fColor = vec4(0.5*vPosition.x+0.5, 0.5*vPosition.y+0.5, 0.5*vPosition.z+0.5, 1.0);
+        }
+        gl_PointSize = 3.0;
+      }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+      precision mediump float;
+      precision highp int;
+
+      varying vec2 fTexCoord;
+      uniform sampler2D texture;
+
+      // 1 - Gouraud  (part 3+4)
+      // 2 - Phong   (part 5)
+      // 3 - rainbox (part 1)
+      uniform int shading_type;
+
+      varying vec4 fColor;
+      varying vec3 L, N, E;
+
+      // Lighting
+      uniform vec4 ambientProduct, diffuseProduct, specularProduct;
+      uniform vec4 lightPosition;
+      uniform float shininess;
+
+      void main(void) {
+        if(shading_type == 2){
+          vec3 H = normalize( L + E );
+          vec4 ambient = ambientProduct;
+
+          float Kd = max( dot(L, N), 0.0 );
+          vec4 diffuse = Kd*diffuseProduct;
+
+          float Ks = pow( max(dot(N, H), 0.0), shininess );
+          vec4 specular = Ks * specularProduct;
+
+          if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+          vec4 computed = ambient + diffuse + specular;
+          computed.a = 1.0;
+
+          gl_FragColor = computed*texture2D( texture, fTexCoord );
+        } else {
+          gl_FragColor = fColor*texture2D( texture, fTexCoord );
+        }
+      }
+    </script>
+
+    <script type="text/javascript">
+      var Floor = function(params = {}){
+        this.vertices  = [
+          vec4(-4.0, -1.0, -1.0, 1),
+          vec4(4.0, -1.0, -1.0, 1),
+          vec4(4.0, -1.0, -21.0, 1),
+          vec4(-4.0, -1.0, -21.0, 1)
+        ];
+
+        this.edges = [
+          [0, 1],
+          [1, 2],
+          [2, 3],
+          [3, 0]
+        ];
+
+        this.triangles = [
+          [0, 1, 2],
+          [2, 3, 0]
+        ];
+        this.normals   = [];
+
+        for (var i = 0; i < this.triangles.length; i++) {
+          var triangle = this.triangles[i];
+
+          var t1 = subtract(this.vertices[triangle[1]], this.vertices[triangle[0]]);
+          var t2 = subtract(this.vertices[triangle[2]], this.vertices[triangle[0]]);
+          var normal = vec4(normalize(cross(t2, t1)));
+
+          this.normals.push(normal, normal, normal);
+        }
+
+        this.texture_width = 64;
+        this.texture_data = []; //new Uint8Array(4*(this.texture_width**2));
+
+        for (var y = 0; y < this.texture_width; y++) {
+          for (var x = 0; x < this.texture_width; x++) {
+            var c = ((y & 8) ^ (x & 8) ? 0 : 255);
+            this.texture_data.push(c, c, c, 255);
+          }
+        }
+
+        this.texture_data = new Uint8Array(this.texture_data);
+      };
+
+        var sliderRadius = document.getElementById("myRangeRaduis");
+        var sliderCameraX = document.getElementById("myRangeX");
+        var sliderCameraY = document.getElementById("myRangeY");
+        var sliderCameraZ = document.getElementById("myRangeZ");
+        var camera_raduis = 0.8;
+        var camera_pos_x = 0.2;
+        var camera_pos_y = 10;
+        var camera_pos_z = 2;
+      // ===== RENDERER =====
+
+      var Obj = function(params){
+        this.program = params['program'];
+        this.gl      = params['gl'];
+        this.model   = params['model'];
+
+        for(var propt in this)
+          if(this[propt] === undefined)
+            throw "Undefined " + propt + " in Obj()!"
+
+        this.buffers = {
+          normals:   {}, // stores normal points for display purposes only
+          vertices:  {}, // vertices
+          edges:     {}, // lines connecting vertices
+          triangles: {}  // triangles
+        };
+
+        this.to_render = {
+          vertices:  false,
+          edges:     false,
+          normals:   false,
+          triangles: true
+        }
+
+        this.shading_type = 1;
+        this.light_type   = 'directional';
+
+        this.lightAmbient  = [255, 255, 255];
+        this.lightDiffuse  = [255, 255, 255];
+        this.lightSpecular = [255, 255, 255];
+
+        this.materialAmbient  = [255, 255, 255];
+        this.materialDiffuse  = [222, 20, 222];
+        this.materialSpecular = [255, 255, 255];
+
+        this.materialShinines = 100.0;
+
+        this.texture_params = {
+          'clamp_to_edge'         : gl.CLAMP_TO_EDGE,
+          'repeat'                : gl.REPEAT,
+          'mirrored_repeat'       : gl.MIRRORED_REPEAT,
+          'linear'                : gl.LINEAR,
+          'nearest'               : gl.NEAREST,
+          'nearest_mipmap_nearest': gl.NEAREST_MIPMAP_NEAREST,
+          'nearest_mipmap_linear' : gl.NEAREST_MIPMAP_LINEAR,
+          'linear_mipmap_nearest' : gl.LINEAR_MIPMAP_NEAREST,
+          'linear_mipmap_linear'  : gl.LINEAR_MIPMAP_LINEAR,
+        }
+
+        this.texture_wrap_s = 'repeat';
+        this.texture_wrap_t = 'repeat';
+
+        this.texture_min_filter = 'nearest';
+        this.texture_mag_filter = 'nearest';
+
+        this.init_geometry();
+        this.init_camera();
+        this.init_lights();
+      }
+
+      Obj.prototype.init_geometry = function(){
+        var _this = this;
+
+        var gl = this.gl;
+        var program = this.program;
+        var buffers = this.buffers;
+        var model = this.model;
+
+        [{
+            'name' : 'normals',
+            'color': [0, 0, 1],
+            'vertices' : function(){
+              return model.normals
+            }
+          },{
+            'name' : 'vertices',
+            'color': [1, 1, 1],
+            'vertices' : function(){
+              return model.vertices
+            }
+          },{
+            'name' : 'edges',
+            'color': [1, 1, 1],
+            'vertices' : function(){
+              var vertices = [];
+
+              model.edges.forEach(function(pair){
+                vertices.push(
+                  model.vertices[pair[0]],
+                  model.vertices[pair[1]]
+                );
+              });
+
+              return vertices;
+            }
+          },{
+            'name': 'triangles',
+            'color': [0.3, 0.3, 0.3],
+            'vertices': function(){
+              var vertices = [];
+
+              model.triangles.forEach(function(triplet){
+                vertices.push(
+                  model.vertices[triplet[0]],
+                  model.vertices[triplet[1]],
+                  model.vertices[triplet[2]]
+                );
+              });
+
+              return vertices;
+            },
+            'normals': function(){
+              var normals = [];
+
+              model.normals.forEach(function(normal){
+                normals.push(normal, normal, normal);
+              });
+
+              return normals;
+            },
+            'texture_coordinates': function(){
+              return [
+                vec2(0, 0),
+                vec2(4, 0),
+                vec2(4, 10),
+                vec2(10, 4),
+                vec2(10, 0),
+                vec2(0, 0),
+              ];
+            }
+          }
+        ].forEach(function(_init){
+          var buffer_group = buffers[_init['name']];
+          var _vertices    = _init['vertices'].call();
+          var _color       = _init['color'];
+
+          gl.deleteBuffer(buffer_group.vertex_buffer);
+          gl.deleteBuffer(buffer_group.color_buffer);
+          gl.deleteBuffer(buffer_group.normals_buffer);
+          gl.deleteBuffer(buffer_group.texture_buffer);
+
+          // generate vertexes and populate buffer
+          buffer_group.vertex_count = _vertices.length;
+          buffer_group.vertex_buffer = gl.createBuffer();
+          buffer_group.vPosition = gl.getAttribLocation( program, "vPosition" );
+          gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.vertex_buffer );
+          gl.bufferData( gl.ARRAY_BUFFER, flatten(_vertices), gl.STATIC_DRAW);
+
+          // generate colors and populate buffer
+          var colors = [];
+          for (var i = 0; i < _vertices.length; i++)
+            colors.push(vec4(_color[0], _color[1], _color[2], 1))
+
+          buffer_group.color_buffer = gl.createBuffer();
+          buffer_group.vColor       = gl.getAttribLocation( program, "vColor" );
+          gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.color_buffer );
+          gl.bufferData( gl.ARRAY_BUFFER, flatten(colors), gl.STATIC_DRAW );
+
+          // normals
+          if(_init['normals']){
+            var normals = _init['normals'].call();
+
+            buffer_group.normals_count  = normals.length;
+            buffer_group.normals_buffer = gl.createBuffer();
+            buffer_group.vNormal        = gl.getAttribLocation(program, "vNormal");
+
+            gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.normals_buffer);
+            gl.bufferData( gl.ARRAY_BUFFER, flatten(normals), gl.STATIC_DRAW );
+          }
+
+          // texture
+          if(_init['texture_coordinates']){
+            var texture_coors = _init['texture_coordinates'].call();
+            var texture = gl.createTexture();
+
+            gl.bindTexture( gl.TEXTURE_2D, texture);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, model.texture_width, model.texture_width, 0, gl.RGBA, gl.UNSIGNED_BYTE, model.texture_data);
+            gl.generateMipmap( gl.TEXTURE_2D );
+
+            ///////////
+            var e = document.getElementById("texture_wrap_t");
+            var texture_wrap_t = e.options[e.selectedIndex].value;
+
+            var ee = document.getElementById("texture_wrap_s");
+            var texture_wrap_s = ee.options[ee.selectedIndex].value;
+
+            var eee = document.getElementById("texture_min_filter");
+            var texture_min_filter = eee.options[eee.selectedIndex].value;
+
+            var eeee = document.getElementById("texture_mag_filter");
+            var texture_mag_filter = eeee.options[eeee.selectedIndex].value;
+
+            //////////
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, _this.texture_params[texture_wrap_s]);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, _this.texture_params[texture_wrap_t]);
+
+            gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, _this.texture_params[texture_min_filter]);
+            gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, _this.texture_params[texture_mag_filter]);
+
+            buffer_group.texture_buffer = gl.createBuffer();
+            buffer_group.vTexCoord = gl.getAttribLocation( program, "vTexCoord");
+            gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.texture_buffer);
+            gl.bufferData( gl.ARRAY_BUFFER, flatten(texture_coors), gl.STATIC_DRAW );
+          }
+        });
+      }
+
+      Obj.prototype.init_camera = function(){
+        var program = this.program;
+
+        // Let's set up matrixes.
+        this.radius = 3.6;
+        this.at = vec3(0.0, 0.0, -1.0);
+        this.up = vec3(0.0, 1.0, 0.0);
+
+        // camera angle
+        this.camera_angle_x = 0;
+        this.camera_angle_y = 1;
+        this.camera_angle_z = 0;
+
+        // Projection matrix
+        this.fovy = 90.0;
+        this.aspect = 1;
+        this.near = 0.01;
+        this.far = 100.0;
+
+        // Matrix locations
+        this.modelViewMatrixLoc  = gl.getUniformLocation( program, "modelViewMatrix" );
+        this.projectionMatrixLoc = gl.getUniformLocation( program, "projectionMatrix" );
+        this.normalMatrixLoc     = gl.getUniformLocation( program, "normalMatrix" );
+
+        this.do_shading_loc      = gl.getUniformLocation( program, "do_shading" );
+        this.shading_type_loc    = gl.getUniformLocation( program, "shading_type" );
+
+        // frame counter for animation
+        this.animate = false;
+        this.frame = 0;
+      }
+
+      Obj.prototype.init_lights = function(){
+        var program = this.program;
+
+        var light_types = {
+          directional: 0.0,
+          positional:  1.0,
+        }
+
+        // lighting
+        var lightPosition = vec4(0.0, 0.0, -15.0, light_types[this.light_type] );
+
+        var lightAmbient  = vec4.apply(null, this.lightAmbient.map(function(n){ return 1/255*n }));
+        var lightDiffuse  = vec4.apply(null, this.lightDiffuse.map(function(n){ return 1/255*n }));
+        var lightSpecular = vec4.apply(null, this.lightSpecular.map(function(n){ return 1/255*n }));
+
+        var materialAmbient  = vec4.apply(null, this.materialAmbient.map(function(n){ return 1/255*n }));
+        var materialDiffuse  = vec4.apply(null, this.materialDiffuse.map(function(n){ return 1/255*n }));
+        var materialSpecular = vec4.apply(null, this.materialSpecular.map(function(n){ return 1/255*n }));
+
+        var ambientProduct = mult(lightAmbient, materialAmbient);
+        var diffuseProduct = mult(lightDiffuse, materialDiffuse);
+        var specularProduct = mult(lightSpecular, materialSpecular);
+
+        gl.uniform4fv( gl.getUniformLocation(program, "ambientProduct" ),  flatten(ambientProduct));
+        gl.uniform4fv( gl.getUniformLocation(program, "diffuseProduct" ),  flatten(diffuseProduct));
+        gl.uniform4fv( gl.getUniformLocation(program, "specularProduct"),  flatten(specularProduct));
+        gl.uniform4fv( gl.getUniformLocation(program, "lightPosition"  ),  flatten(lightPosition));
+
+        gl.uniform1f( gl.getUniformLocation(program, "shininess"),  this.materialShinines);
+      }
+
+      Obj.prototype.render = function(){
+        var buffers     = this.buffers;
+        var gl          = this.gl;
+        var to_render   = this.to_render;
+
+        var _do_shading   = this.do_shading_loc;
+        var _shading_type = this.shading_type_loc;
+
+        if(document.getElementById("animate").checked){ //  this.animate
+          if(this.frame <= 180)
+            this.frame += 1;
+          else
+            this.frame = 2;
+
+          /*this.camera_angle_x */ camera_pos_x= Math.sin(1/90*this.frame*Math.PI);
+        }
+
+        // update martices
+        this.camera = vec3(
+          camera_raduis*Math.sin(camera_pos_x),//this.radius*Math.sin(this.camera_angle_x),
+          camera_raduis*Math.sin(camera_pos_y),//this.radius*Math.sin(this.camera_angle_y),
+          camera_raduis*Math.sin(camera_pos_z),//this.radius*Math.cos(this.camera_angle_z)
+        );
+
+        this.modelViewMatrix = lookAt(this.camera, this.at, this.up);
+        this.projectionMatrix = perspective(this.fovy, this.aspect, this.near, this.far);
+
+        this.normalMatrix = [
+          vec3(this.modelViewMatrix[0][0], this.modelViewMatrix[0][1], this.modelViewMatrix[0][2]),
+          vec3(this.modelViewMatrix[1][0], this.modelViewMatrix[1][1], this.modelViewMatrix[1][2]),
+          vec3(this.modelViewMatrix[2][0], this.modelViewMatrix[2][1], this.modelViewMatrix[2][2])
+        ];
+
+        gl.uniformMatrix4fv(this.modelViewMatrixLoc,  false, flatten(this.modelViewMatrix));
+        gl.uniformMatrix4fv(this.projectionMatrixLoc, false, flatten(this.projectionMatrix));
+        gl.uniformMatrix3fv(this.normalMatrixLoc,     false, flatten(this.normalMatrix));
+
+        gl.uniform1i(_shading_type, this.shading_type);
+
+        [{
+          'name':'normals',
+          'mode':'POINTS'
+        },{
+          'name':'vertices',
+          'mode':'POINTS'
+        },{
+          'name':'edges',
+          'mode':'LINES'
+        },{
+          'name':'triangles',
+          'mode':'TRIANGLES'
+        }].forEach(function(_render){
+          var buffer_group = buffers[_render['name']];
+
+          if(buffer_group.vertex_count && to_render[_render['name']]){
+            gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.vertex_buffer );
+            gl.vertexAttribPointer( buffer_group.vPosition, 4, gl.FLOAT, false, 0, 0 );
+            gl.enableVertexAttribArray( buffer_group.vPosition );
+
+            gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.color_buffer );
+            gl.vertexAttribPointer( buffer_group.vColor, 4, gl.FLOAT, false, 0, 0 );
+            gl.enableVertexAttribArray( buffer_group.vColor );
+
+            if(buffer_group.vNormal && buffer_group.normals_count){
+              gl.uniform1i(_do_shading, true);
+              gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.normals_buffer );
+              gl.vertexAttribPointer(buffer_group.vNormal, 4, gl.FLOAT, false, 0, 0 );
+              gl.enableVertexAttribArray(buffer_group.vNormal);
+            } else {
+              gl.uniform1i(_do_shading, false);
+            }
+
+            // textures
+            if(_render['name'] == 'triangles'){
+              gl.bindBuffer( gl.ARRAY_BUFFER, buffer_group.texture_buffer);
+              gl.vertexAttribPointer(buffer_group.vTexCoord, 2, gl.FLOAT, false, 0, 0);
+              gl.enableVertexAttribArray(buffer_group.vTexCoord);
+            }
+
+            gl.drawArrays( gl[_render['mode']], 0, buffer_group.vertex_count );
+
+            gl.disableVertexAttribArray(buffer_group.vTexCoord);
+            gl.disableVertexAttribArray(buffer_group.vPosition);
+            gl.disableVertexAttribArray(buffer_group.vColor);
+            gl.disableVertexAttribArray(buffer_group.vNormal);
+          }
+        });
+      }
+
+      // all objects that we are going to draw are stored in this array
+      var objects = [];
+
+      window.onload = function() {
+        try { init(); }
+        catch (e) { console.debug(e) }
+      }
+
+      function selectChange() {
+        try { new init(); }
+        catch (e) { console.debug(e) }
+      }
+      
+
+      var init = function(){
+        canvas = document.getElementById("gl-canvas");
+        gl = WebGLUtils.setupWebGL(canvas);
+
+        if (!gl) alert("WebGL isn’t available")
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.0, 0.3, 0.99, 1.0);
+
+        // gl.clearColor(0, 0, 0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
+
+        var program = initShaders( gl, "vertex-shader", "fragment-shader" );
+        gl.useProgram( program );
+
+        var floor = new Floor();
+
+        var obj = new Obj({
+          program: program,
+          gl: gl,
+          model: floor
+        });
+
+        objects.push(obj);
+
+      sliderRadius.oninput = function() {
+            camera_raduis = this.value;
+        };
+
+        sliderCameraX.oninput = function() {
+            camera_pos_x = this.value;
+        };
+
+        sliderCameraY.oninput = function() {
+            camera_pos_y = this.value;
+        };
+
+        sliderCameraZ.oninput = function() {
+            camera_pos_z = this.value;
+        };
+
+        var render = function(){
+          gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+          objects.forEach(function(o){ o.render() });
+          window.requestAnimFrame(function(){
+            render()
+          });
+        }
+
+        render();
+      }
+    </script>
+</body>
+</html>

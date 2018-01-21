@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>worksheet 8 - part 2</title>
+    <script src="Common/webgl-utils.js" charset="utf-8"></script><style></style>
+    <script src="Common/initShaders.js" charset="utf-8"></script>
+    <script src="Common/MV.js" charset="utf-8"></script>
+    <script src="Common/OBJParser.js" charset="utf-8"></script>
+    <script src="worksheet 8 - part 2.js" charset="utf-8"></script>
+  </head>
+  <body style="background: #333; margin: 0; padding: 5px; color: #fff; font-family: 'Helvetica Neue'; font-size: 10pt;">
+    <!-- FLOOR -->
+    <script id="vertex-shader-floor" type="x-shader/x-vertex">
+      precision mediump float;
+      precision highp int;
+
+      attribute vec4 vPosition;
+      attribute vec2 vTexCoord;
+
+      varying vec2 fTexCoord;
+      varying vec4 v_PositionFromLight;
+
+      uniform sampler2D uSampler;
+      uniform sampler2D uShadowMap;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+      uniform mat4 mvpMatrixFromLight;
+
+      void main(void){
+        gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+        v_PositionFromLight = mvpMatrixFromLight * vPosition;
+
+        fTexCoord = vTexCoord;
+      }
+    </script>
+
+    <script id="fragment-shader-floor" type="x-shader/x-fragment">
+      precision mediump float;
+      precision highp int;
+
+      varying vec2 fTexCoord;
+      varying vec4 v_PositionFromLight;
+
+      uniform sampler2D uSampler;
+      uniform sampler2D uShadowMap;
+
+      void main(void){
+        vec3 shadowCoord = (v_PositionFromLight.xyz/v_PositionFromLight.w) / 2.0 + 0.5;
+        vec4 rgbaDepth = texture2D(uShadowMap, shadowCoord.xy);
+        float depth = rgbaDepth.r;
+        float visibility = (shadowCoord.z > depth + 0.005) ? 1.0 : 0.4;
+
+        gl_FragColor = vec4(texture2D( uSampler, fTexCoord ).rgb * visibility, 1.0);
+      }
+    </script>
+
+    <!-- TEAPOT -->
+    <script id="vertex-shader-teapot" type="x-shader/x-vertex">
+      precision mediump float;
+      precision highp int;
+
+      attribute vec3 vPosition;
+      attribute vec3 vNormal;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+      uniform mat3 normalMatrix;
+
+      uniform vec3 lightPosition;
+
+      varying vec4 fColor;
+
+      void main(void){
+        vec3 pos = (modelViewMatrix * vec4(vPosition, 1.0)).xyz;
+
+        vec3 L = normalize(lightPosition - pos);
+        vec3 N = normalize( normalMatrix*vNormal);
+        vec3 E = -normalize( pos );
+        vec3 H = normalize( L + E );
+
+        vec4 ambient = vec4(0.0, 0.1, 0.2, 1.0);
+
+        float Kd = max( dot(L, N), 0.0 );
+        vec4 diffuse = Kd * vec4(0.1, 0.1, 0.2, 0.0);
+
+        float Ks = pow( max(dot(N, H), 0.0), 10.0 );
+        vec4 specular = Ks * vec4(1.0, 1.0, 1.0, 0.0);
+        if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+
+        fColor = ambient + diffuse + specular;
+        // fColor = vec4(0.5, .5, 1.0, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1.0);
+      }
+    </script>
+
+    <script id="fragment-shader-teapot" type="x-shader/x-fragment">
+      precision mediump float;
+      precision highp int;
+
+      varying vec4 fColor;
+
+      void main(void){
+        gl_FragColor = fColor; //vec4(1.0, 1.0, 1.0, 1.0);
+      }
+    </script>
+
+    <!-- SHADOW -->
+    <script id="vertex-shader-shadow" type="x-shader/x-fragment">
+      precision mediump float;
+
+      attribute vec3 vPosition;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+
+      void main(void) {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1.0);
+      }
+    </script>
+
+    <script id="fragment-shader-shadow" type="x-shader/x-fragment">
+      precision mediump float;
+
+      void main() {
+        gl_FragColor = vec4(gl_FragCoord.z, 0.0, 0.0, 0.0);
+      }
+    </script>
+
+    <canvas id="gl-canvas" width="512" height="512">
+      Missing canvas support.
+    </canvas>
+    <div style="width: 500px; padding: 10px;">
+      <p>
+        <strong>Q:</strong> Compare projection shadows to shadow mapping by listing advantages and
+        disadvantages of the two techniques.
+      </p>
+      <p>
+        <strong>A:</strong> Projections shadows a very easy to implement by
+        projecting into the plane and rendering with the black color. They lack
+        a soft shadow edge and can only be projected onto flat surfaces.
+      </p>
+      <p>
+        Shadow mapping is little harded to implement but is much more usefull as
+        it can both have a nice edge (with pcf or other techniques) and drawn on
+        surfaces with complex geometry.
+      </p>
+    </div>
+          <br>
+    <br>
+    Change camera.y possion:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="10" value="0.5" step="0.1" class="slider" id="myRange">
+    </div>
+    <br>
+    <br>
+    Animate light
+    <br>
+    <input class="switch_1" type="checkbox" id="light_check">
+    <br>
+    <br>
+    Animate teapot
+    <br>
+    <input class="switch_1" type="checkbox" id="teapot_check">
+    <style type="text/css">
+ .slider {
+    -webkit-appearance: none;
+    width: 500px;
+    height: 15px;
+    border-radius: 5px;  
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%; 
+    background: #0ebeff;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #0ebeff;
+    cursor: pointer;
+}
+input[type="checkbox"].switch_1{
+  font-size: 30px;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  width: 2.5em;
+  height: 0.75em;
+  background: #ddd;
+  border-radius: 3em;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked{
+  background: #0ebeff;
+  }
+  
+  input[type="checkbox"].switch_1:after{
+  position: absolute;
+  content: "";
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  background: #fff;
+  -webkit-box-shadow: 0 0 .25em rgba(0,0,0,.3);
+          box-shadow: 0 0 .25em rgba(0,0,0,.3);
+  -webkit-transform: scale(.7);
+          transform: scale(.7);
+  left: 0;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked:after{
+  left: calc(100% - 1.5em);
+  }
+
+</style>
+</body>
+</html>

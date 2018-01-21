@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>worksheet 8 - part 1</title>
+    <script src="Common/webgl-utils.js" charset="utf-8"></script><style></style>
+    <script src="Common/initShaders.js" charset="utf-8"></script>
+    <script src="Common/MV.js" charset="utf-8"></script>
+    <script src="Common/OBJParser.js" charset="utf-8"></script>
+
+  </head>
+  <body style="background: #333; margin: 0; padding: 5px; color: #fff; font-family: 'Helvetica Neue'; font-size: 10pt;">
+    <!-- FLOOR -->
+    <script id="vertex-shader-floor" type="x-shader/x-vertex">
+      precision mediump float;
+      precision highp int;
+
+      attribute vec4 vPosition;
+      attribute vec2 vTexCoord;
+
+      varying vec2 fTexCoord;
+
+      uniform sampler2D uSampler;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+
+      void main(void){
+        gl_Position = projectionMatrix * modelViewMatrix * vPosition;
+        fTexCoord = vTexCoord;
+      }
+    </script>
+
+    <script id="fragment-shader-floor" type="x-shader/x-fragment">
+      precision mediump float;
+      precision highp int;
+
+      varying vec2 fTexCoord;
+      uniform sampler2D uSampler;
+
+      void main(void){
+        gl_FragColor = texture2D( uSampler, fTexCoord );
+      }
+    </script>
+
+    <!-- TEAPOT -->
+    <script id="vertex-shader-teapot" type="x-shader/x-vertex">
+      precision mediump float;
+      precision highp int;
+
+      attribute vec3 vPosition;
+      attribute vec3 vNormal;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+      uniform mat3 normalMatrix;
+
+      uniform bool isShadow;
+
+      uniform vec3 lightPosition;
+
+      varying vec4 fColor;
+
+      void main(void){
+        vec3 pos = (modelViewMatrix * vec4(vPosition, 1.0)).xyz;
+
+        vec3 L = normalize(lightPosition - pos);
+        vec3 N = normalize( normalMatrix*vNormal);
+        vec3 E = -normalize( pos );
+        vec3 H = normalize( L + E );
+
+        vec4 ambient = vec4(0.0, 0.0, 0.0, 0.0);
+
+        float Kd = max( dot(L, N), 0.0 );
+        vec4 diffuse = Kd * vec4(0.2, 0.2, 0.2, 0.0);
+
+        float Ks = pow( max(dot(N, H), 0.0), 10.0 );
+        vec4 specular = Ks * vec4(1.0, 1.0, 1.0, 0.0);
+        if( dot(L, N) < 0.0 ) specular = vec4(0.0, 0.0, 0.0, 1.0);
+
+        if(isShadow)
+          fColor = vec4(0.0, 0.0, 0.0, 0.0000001);
+        else
+          fColor = ambient + diffuse + specular;
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1.0);
+      }
+    </script>
+
+    <script id="fragment-shader-teapot" type="x-shader/x-fragment">
+      precision mediump float;
+      precision highp int;
+
+      varying vec4 fColor;
+
+      void main(void){
+        gl_FragColor = fColor; //vec4(1.0, 1.0, 1.0, 1.0);
+      }
+    </script>
+
+    <script type="text/javascript">
+    var Model = function(obj_file){
+      var objDoc = new OBJDoc('filename');
+      var result = objDoc.parse(obj_file, 1, false)
+      var data   = objDoc.getDrawingInfo();
+
+      this.colors    = data.colors;
+      this.indices   = data.indices;
+      this.vertices  = data.vertices;
+      this.normals   = data.normals;
+
+      this.animate   = true;
+    };
+
+    var image = null;
+    var teapot = {
+      frame: 0,
+      elevation: 0,
+      animate: true,
+      model: null,
+      string: null
+    };
+
+    var gl = null;
+
+    var programs = {
+      floor: null,
+      teapot: null
+    }
+
+    var camera  = new (function(){ this.x = 0.0;  this.y = 3.0; this.z = -10.0; })();
+    var look_at = vec3(0.0, 0.0, -2.0);
+
+    var init = function( params ){
+      var canvas = document.getElementById("gl-canvas");
+      gl = WebGLUtils.setupWebGL(canvas);
+
+      if (!gl) alert("WebGL isn’t available")
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0.0, 0.3, 0.99, 1.0);
+
+      // gl.clearColor(0, 0, 0, 1.0);
+      gl.enable(gl.DEPTH_TEST);
+      // gl.depthFunc(gl.LESS);
+
+      gl.enable(gl.CULL_FACE);
+      gl.cullFace(gl.BACK);
+
+      programs['floor'] = initShaders( gl, "vertex-shader-floor", "fragment-shader-floor" );
+      programs['teapot'] = initShaders( gl, "vertex-shader-teapot", "fragment-shader-teapot" );
+
+      setup_floor();
+      setup_teapot();
+      setup_light();
+
+      var call_render = function(){
+        gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+
+        update_light();
+        render_floor();
+        render_teapot();
+
+        window.requestAnimFrame(function(){
+          call_render()
+        });
+      };
+      call_render()
+    }
+
+    /* ========== Rendering part ========== */
+
+    /* FLOOR */
+    var floor_buffers = {
+      vertex_buffer:  null,
+      vPosition_loc:  null,
+
+      texture:        null,
+      uSampler_loc:   null,
+
+      texture_buffer: null,
+      vTexCoord_loc:  null,
+
+      modelViewMatrix_loc:  null,
+      projectionMatrix_loc: null
+    };
+
+    var setup_floor = function(){
+      gl.useProgram( programs['floor'] );
+
+      var buffers = floor_buffers;
+      var floor_vertices = [
+        vec4(-2.0, -1.0, 0.0,  1),
+        vec4(2.0,  -1.0, 0.0,  1),
+        vec4(2.0,  -1.0, -4.0, 1),
+        vec4(-2.0, -1.0, -4.0, 1)
+      ];
+
+      buffers['vertex_buffer'] = gl.createBuffer();
+      buffers['vPosition_loc'] = gl.getAttribLocation( programs['floor'], "vPosition" );
+      gl.bindBuffer( gl.ARRAY_BUFFER, buffers['vertex_buffer'] );
+      gl.bufferData( gl.ARRAY_BUFFER, flatten(floor_vertices), gl.STATIC_DRAW);
+
+      buffers['uSampler_loc'] = gl.getUniformLocation(programs['floor'], "uSampler");
+      gl.activeTexture(gl.TEXTURE0);
+      buffers['texture'] = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, buffers['texture']);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+      gl.generateMipmap(gl.TEXTURE_2D );
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+
+      buffers['texture_buffer'] = gl.createBuffer();
+      buffers['vTexCoord_loc']  = gl.getAttribLocation( programs['floor'], "vTexCoord");
+
+      gl.bindBuffer( gl.ARRAY_BUFFER, buffers['texture_buffer']);
+      gl.bufferData( gl.ARRAY_BUFFER, flatten([vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1)]), gl.STATIC_DRAW );
+
+      buffers['modelViewMatrix_loc']  = gl.getUniformLocation( programs['floor'], "modelViewMatrix" );
+      buffers['projectionMatrix_loc'] = gl.getUniformLocation( programs['floor'], "projectionMatrix" );
+    };
+
+    var render_floor = function(){
+      var buffers = floor_buffers;
+      gl.useProgram( programs['floor'] );
+
+      gl.bindBuffer( gl.ARRAY_BUFFER, buffers['vertex_buffer'] );
+      gl.vertexAttribPointer( buffers['vPosition_loc'], 4, gl.FLOAT, false, 0, 0 );
+      gl.enableVertexAttribArray( buffers['vPosition_loc'] );
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, buffers['texture']);
+      gl.uniform1i(buffers['uSampler_loc'], 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffers['texture_buffer']);
+      gl.vertexAttribPointer(buffers['vTexCoord_loc'], 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(buffers['vTexCoord_loc']);
+
+      var transform = mat4();
+
+      /* moving it a little bit */
+      transform[2][3] = -1;
+
+      var modelViewMatrix = mult(
+        lookAt(vec3(camera.x, camera.y, camera.z), look_at, vec3(0.0, 1.0, 0.0)),
+        transform
+      );
+
+      var projectionMatrix = perspective(45.0, 1, 0.01, 100.0);
+
+      gl.uniformMatrix4fv(buffers['modelViewMatrix_loc'],  false, flatten(modelViewMatrix));
+      gl.uniformMatrix4fv(buffers['projectionMatrix_loc'], false, flatten(projectionMatrix));
+
+      gl.drawArrays( gl.TRIANGLE_FAN, 0, 4 );
+    };
+
+    /* TEAPOT */
+
+    var teapot_buffers = {
+      vertex_buffer:        null,
+      indices_buffer:       null,
+      normals_buffer:       null,
+
+      modelViewMatrix_loc:  null,
+      projectionMatrix_loc: null,
+      normalMatrix_loc:     null,
+
+      isShadow_loc:         null
+    };
+
+    var setup_teapot = function(){
+      var buffers = teapot_buffers;
+      teapot['model'] = new Model(teapot['string']);
+
+      gl.useProgram( programs['teapot'] );
+
+      /* vertex positions */
+      buffers['vertex_buffer'] = gl.createBuffer();
+      buffers['vPosition_loc'] = gl.getAttribLocation( programs['teapot'], "vPosition" );
+      gl.bindBuffer( gl.ARRAY_BUFFER, buffers['vertex_buffer'] );
+      gl.bufferData( gl.ARRAY_BUFFER, flatten(teapot['model'].vertices), gl.STATIC_DRAW);
+
+      /* indices */
+      buffers['indices_buffer'] = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers['indices_buffer']);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, teapot['model'].indices, gl.STATIC_DRAW);
+
+      /* normals */
+      buffers['normals_buffer'] = gl.createBuffer();
+      buffers['vNormal_loc'] = gl.getAttribLocation( programs['teapot'], "vNormal" );
+      gl.bindBuffer( gl.ARRAY_BUFFER, buffers['normals_buffer'] );
+      gl.bufferData( gl.ARRAY_BUFFER, teapot['model'].normals, gl.STATIC_DRAW);
+
+      /* matrixes */
+      buffers['modelViewMatrix_loc']  = gl.getUniformLocation( programs['teapot'], "modelViewMatrix" );
+      buffers['projectionMatrix_loc'] = gl.getUniformLocation( programs['teapot'], "projectionMatrix" );
+      buffers['normalMatrix_loc']     = gl.getUniformLocation( programs['teapot'], "normalMatrix" );
+      buffers['isShadow_loc']         = gl.getUniformLocation( programs['teapot'], "isShadow" );
+    };
+
+    var render_teapot = function(){
+      var buffers = teapot_buffers;
+
+      gl.useProgram( programs['teapot'] );
+
+      /* vertex positions */
+      gl.bindBuffer( gl.ARRAY_BUFFER, buffers['vertex_buffer'] );
+      gl.vertexAttribPointer( buffers['vPosition_loc'], 3, gl.FLOAT, false, 0, 0 );
+      gl.enableVertexAttribArray( buffers['vPosition_loc'] );
+
+      /* normals */
+      gl.bindBuffer( gl.ARRAY_BUFFER, buffers['normals_buffer'] );
+      gl.vertexAttribPointer( buffers['vNormal_loc'], 3, gl.FLOAT, false, 0, 0 );
+      gl.enableVertexAttribArray( buffers['vNormal_loc'] );
+
+      /* matrices */
+      var transform = mat4();
+
+      /* scale */            /* moving */
+      transform[0][0] = 1/4; transform[0][3] = 0;
+      transform[1][1] = 1/4; //transform[1][3] = -1;
+      transform[2][2] = 1/4; transform[2][3] = -3;
+
+      if(document.getElementById("teapot_check").checked){ //  teapot['animate']
+        teapot['frame'] += 0.05;
+        teapot['elevation'] = Math.sin(teapot['frame'])
+      }
+
+      transform[1][3] = teapot['elevation'];
+
+      var modelViewMatrix = mult(
+        lookAt(vec3(camera.x, camera.y, camera.z), look_at, vec3(0.0, 1.0, 0.0)),
+        transform
+      );
+
+      var projectionMatrix = perspective(45.0, 1, 0.01, 100.0);
+
+      var normalMatrix = [
+        vec3(modelViewMatrix[0][0], modelViewMatrix[0][1], modelViewMatrix[0][2]),
+        vec3(modelViewMatrix[1][0], modelViewMatrix[1][1], modelViewMatrix[1][2]),
+        vec3(modelViewMatrix[2][0], modelViewMatrix[2][1], modelViewMatrix[2][2])
+      ];
+
+      gl.uniformMatrix4fv(buffers['modelViewMatrix_loc'],  false, flatten(modelViewMatrix));
+      gl.uniformMatrix4fv(buffers['projectionMatrix_loc'], false, flatten(projectionMatrix));
+      gl.uniformMatrix3fv(buffers['normalMatrix_loc'],     false, flatten(normalMatrix));
+
+      gl.uniform1i(buffers['isShadow_loc'], false); // turn off shadow
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers['indices_buffer']);
+      gl.drawElements( gl.TRIANGLES, teapot['model'].indices.length, gl.UNSIGNED_SHORT, 0);
+
+      /* let's render a shadow */
+      var _light = light['value'];
+      var m = mat4();
+
+      m[3][3] = 0;
+      m[3][1] = -1/(_light[1] - 0.01);
+
+      transform[0][0] = teapot['elevation']/4; transform[0][3] = 0;
+      transform[1][1] = teapot['elevation']/4; transform[1][3] = -1;
+      transform[2][2] = teapot['elevation']/4; transform[2][3] = -3;
+
+      // transform[1][3] = -1;
+      var modelViewMatrix = mult(
+        lookAt(vec3(camera.x, camera.y, camera.z), look_at, vec3(0.0, 1.0, 0.0)),
+        transform
+      );
+
+      modelViewMatrix = mult(modelViewMatrix, translate(_light[0], _light[1], _light[2]));
+      modelViewMatrix = mult(modelViewMatrix, m);
+      modelViewMatrix = mult(modelViewMatrix, translate(-_light[0], -_light[1], -_light[2]));
+
+      gl.uniform1i(buffers['isShadow_loc'], true); // turn on shadow
+      gl.uniformMatrix4fv(buffers['modelViewMatrix_loc'],  false, flatten(modelViewMatrix));
+      gl.drawElements( gl.TRIANGLES, teapot['model'].indices.length, gl.UNSIGNED_SHORT, 0);
+    };
+
+    /* light */
+    var light = {
+      animate: true,
+      loc: null,
+      value: new Float32Array([0.0, 6.0, -5.0]),
+      angle: 0
+    };
+
+    var setup_light = function(){
+      light['loc'] = gl.getUniformLocation( programs['teapot'], "lightPosition" );
+    };
+
+    var update_light = function(){
+    if(document.getElementById("light_check").checked){  //light['animate']          
+      light['angle'] += 0.1;
+    }
+      if(light['angle'] > 2*Math.PI) light['angle'] -= 2*Math.PI;
+
+      light['value'][0] = 3 * Math.sin(light['angle']);
+      light['value'][2] = (3 * Math.cos(light['angle']));
+
+      gl.uniform3fv( light['loc'], light['value']);
+    };
+
+    var load_texture = function(callback){
+      image = document.createElement('img');
+      image.src = 'xamp23.png';
+      image.onload = callback;
+    };
+
+    var load_teapot = function(callback){
+       var xhr = new XMLHttpRequest();
+       xhr.onreadystatechange = function() {
+          if (xhr.readyState == XMLHttpRequest.DONE) {
+            teapot['string'] = xhr.responseText;
+            callback();
+          }
+      }
+      xhr.open('GET', 'teapot.obj', true);
+      xhr.send(null);
+    };
+
+
+    window.onload = function(){
+        var slider = document.getElementById("myRange");
+
+  slider.oninput = function() {
+    camera.y = this.value;
+  } ;
+      load_texture(function(){
+        load_teapot(function(){
+          init();
+        })
+      });
+    }
+    </script>
+    <canvas id="gl-canvas" width="512" height="512">
+      Missing canvas support.
+    </canvas>
+      <br>
+    <br>
+    Change camera.y possion:
+    <div id="slidecontainer" style="width: 512px;">
+      <input type="range" min="0" max="10" value="0.5" step="0.1" class="slider" id="myRange">
+    </div>
+    <br>
+    <br>
+    Animate light
+    <br>
+    <input class="switch_1" type="checkbox" id="light_check">
+    <br>
+    <br>
+    Animate teapot
+    <br>
+    <input class="switch_1" type="checkbox" id="teapot_check">
+    <style type="text/css">
+ .slider {
+    -webkit-appearance: none;
+    width: 500px;
+    height: 15px;
+    border-radius: 5px;  
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%; 
+    background: #0ebeff;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #0ebeff;
+    cursor: pointer;
+}
+input[type="checkbox"].switch_1{
+  font-size: 30px;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  width: 2.5em;
+  height: 0.75em;
+  background: #ddd;
+  border-radius: 3em;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked{
+  background: #0ebeff;
+  }
+  
+  input[type="checkbox"].switch_1:after{
+  position: absolute;
+  content: "";
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  background: #fff;
+  -webkit-box-shadow: 0 0 .25em rgba(0,0,0,.3);
+          box-shadow: 0 0 .25em rgba(0,0,0,.3);
+  -webkit-transform: scale(.7);
+          transform: scale(.7);
+  left: 0;
+  -webkit-transition: all .2s ease-in-out;
+  transition: all .2s ease-in-out;
+  }
+  
+  input[type="checkbox"].switch_1:checked:after{
+  left: calc(100% - 1.5em);
+  }
+
+</style>
+</body>
+  
+</div>
+</html>

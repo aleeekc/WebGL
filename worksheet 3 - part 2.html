@@ -1,0 +1,28 @@
+<p>One-point perspective</p>
+<canvas id="canvasOnePoint" width="512" height="512"></canvas>
+</br>
+<p>Two-point perspective</p>
+<canvas id="canvasTwoPoint" width="512" height="512"></canvas>
+</br>
+<p>Three-point perspective</p>
+<canvas id="canvasThreePoint" width="512" height="512"></canvas>
+<!-- vertex shader -->
+<script id="2d-vertex-shader" type="x-shader/x-vertex">
+attribute vec4 a_position;
+uniform mat4 u_worldViewProjection;
+
+void main() {
+   gl_Position = u_worldViewProjection * a_position;
+}
+</script>
+<!-- fragment shader -->
+<script id="2d-fragment-shader" type="x-shader/x-fragment">
+void main() {
+   gl_FragColor = vec4(0,0,0,1);
+}
+</script>
+
+<script src="https://webglfundamentals.org/webgl/lessons/resources/../../resources/webgl-utils.js"></script>
+<script src="https://webglfundamentals.org/webgl/lessons/resources/../../resources/m4.js"></script>
+
+<script type="text/javascript" src="worksheet 3 - part 2.js"></script>
